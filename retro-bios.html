@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Victor Santos' Projects & Knowledge Base</title>
+<meta name="description" content="A public workspace and personal knowledge base by Victor Santos, featuring software projects, technical posts, practical guides, and useful resources.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0a0a0a">
+<meta property="og:title" content="Victor Santos' Projects & Knowledge Base">
+<meta property="og:description" content="A public workspace and personal knowledge base by Victor Santos, featuring software projects, technical posts, practical guides, and useful resources.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="">
+<noscript>
+  <!-- SEO + no-JS fallback: redirect after a short delay -->
+  <meta http-equiv="refresh" content="3">
+</noscript>
+<style>
+  :root {
+    --amber: #e8b04b;
+    --green: #36d65c;
+    --bg: #0a0a0a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: #c9c9c9;
+    font-family: "Courier New", "Lucida Console", monospace;
+    font-size: 16px;
+    line-height: 1.45;
+    padding: 28px 34px;
+    overflow: hidden;
+    /* subtle CRT scanline */
+    background-image: repeating-linear-gradient(
+      0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px
+    );
+  }
+  /* visually-hidden but crawlable heading for SEO */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .header { color: var(--amber); margin-bottom: 12px; }
+  .header b { color: #fff; }
+  .logo {
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    display: inline-block;
+    padding: 2px 10px;
+    margin-bottom: 14px;
+    letter-spacing: 2px;
+  }
+  #screen { white-space: pre-wrap; }
+  .ok { color: var(--green); }
+  .warn { color: var(--amber); }
+  .dim { color: #6a6a6a; }
+  .cursor {
+    display: inline-block; width: 9px; height: 1.05em;
+    background: var(--green); vertical-align: text-bottom;
+    animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .footer {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    padding: 8px 34px; color: #6a6a6a;
+    border-top: 1px solid #1c1c1c; background: var(--bg);
+    font-size: 13px;
+  }
+  /* CRT vignette + flicker */
+  body::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    box-shadow: inset 0 0 160px rgba(0,0,0,0.9);
+    animation: flicker 6s infinite;
+  }
+  @keyframes flicker { 0%,97%,100%{opacity:1;} 98%{opacity:.82;} 99%{opacity:.95;} }
+
+  .skip-btn {
+    position: fixed; right: 34px; bottom: 48px; z-index: 5;
+    font-family: inherit; font-size: 14px; color: var(--amber);
+    background: transparent; border: 1px solid var(--amber); padding: 8px 16px;
+    cursor: pointer; letter-spacing: 1px;
+    opacity: 0; transform: translateY(6px); pointer-events: none;
+    transition: opacity .4s ease, transform .4s ease, background .15s, color .15s;
+  }
+  .skip-btn.show { opacity: 1; transform: none; pointer-events: auto; }
+  .skip-btn:hover { background: var(--amber); color: #0a0a0a; }
+  .skip-count { opacity: .65; font-size: .85em; }
+  .final-msg { display: none; margin-top: 18px; color: var(--green); }
+  .final-msg.show { display: block; }
+  .final-msg.await { animation: blink 1.2s steps(1) infinite; }
+  .final-msg a { color: var(--amber); text-decoration: underline; }
+</style>
+</head>
+<body>
+  <h1 class="sr-only">System power-on self-test — initializing and redirecting</h1>
+  <p class="sr-only">If you are not redirected automatically, continue to
+    <a href="https://vss.dev" id="seoLink" rel="noopener">https://vss.dev</a>.</p>
+
+  <div class="logo">PHOENIX&nbsp;BIOS</div>
+  <div class="header">
+    Award Modular BIOS v6.00PG, An Energy Star Ally<br>
+    Copyright (C) 1984-2024, <b><span class="brand-name">VSS</span> Systems Inc.</b>
+  </div>
+
+  <main id="screen" aria-live="polite"></main>
+  <span class="cursor" id="cursor"></span>
+  <p class="final-msg" id="finalMsg"><span id="finalVerb">Loading</span>
+    <a href="https://vss.dev" id="finalLink" rel="noopener">https://vss.dev</a><span id="finalHint"></span></p>
+
+  <button id="skipBtn" class="skip-btn">Skip&nbsp;&rarr;<span class="skip-count" id="skipCount"></span></button>
+  <div class="footer" id="footer">Press DEL to enter SETUP &nbsp;•&nbsp; Booting…</div>
+
+<script>
+  /* ============================================================
+     CONFIG — edit these two values
+     ============================================================ */
+  const CONFIG = {
+    duration: 5,                       // boot length in SECONDS
+    redirect: "https://vss.dev",   // where to send the user
+    brand: "VSS",                      // brand name shown throughout the boot
+    autoRedirect: true,                // false => wait for keypress/click after boot
+    skipAfter: 3                       // seconds until Skip button shows (false to hide)
+  };
+  // Optional URL overrides: ?duration=12&redirect=https://site.com&autoRedirect=0&skipAfter=5
+  (function(){
+    const q = new URLSearchParams(location.search);
+    if (q.get("duration")) CONFIG.duration = parseFloat(q.get("duration"));
+    if (q.get("redirect")) CONFIG.redirect = q.get("redirect");
+    if (q.get("brand")) CONFIG.brand = q.get("brand");
+    if (q.has("autoRedirect")) CONFIG.autoRedirect = !/^(0|false|no|off)$/i.test(q.get("autoRedirect"));
+    if (q.has("skipAfter")) CONFIG.skipAfter = /^(false|no|off)$/i.test(q.get("skipAfter")) ? false : parseFloat(q.get("skipAfter"));
+  })();
+
+  /* ---- Apply brand + destination link everywhere (one place to edit) ---- */
+  const BRAND = CONFIG.brand;
+  document.querySelectorAll(".brand-name").forEach(el => el.textContent = BRAND);
+  ["seoLink", "finalLink"].forEach(id => {
+    const a = document.getElementById(id);
+    if (a){ a.href = CONFIG.redirect; a.textContent = CONFIG.redirect; }
+  });
+
+  /* ---- Skip button + redirect control (shared pattern) ---- */
+  let redirected = false;
+  function goRedirect(){ if (redirected) return; redirected = true; location.replace(CONFIG.redirect); }
+
+  const skipBtn = document.getElementById("skipBtn");
+  skipBtn.addEventListener("click", goRedirect);
+  if (CONFIG.skipAfter !== false && !isNaN(CONFIG.skipAfter)){
+    setTimeout(() => skipBtn.classList.add("show"), Math.max(0, CONFIG.skipAfter) * 1000);
+  }
+
+  // live countdown to auto-redirect (only when autoRedirect is on)
+  const skipCount = document.getElementById("skipCount");
+  if (CONFIG.autoRedirect){
+    const bootStart = performance.now();
+    const tick = setInterval(() => {
+      if (redirected){ clearInterval(tick); return; }
+      const remain = Math.max(0, CONFIG.duration - (performance.now() - bootStart) / 1000);
+      skipCount.textContent = " (auto in " + Math.ceil(remain) + "s)";
+      if (remain <= 0) clearInterval(tick);
+    }, 250);
+  }
+
+  const finalMsg  = document.getElementById("finalMsg");
+  const finalVerb = document.getElementById("finalVerb");
+  const finalHint = document.getElementById("finalHint");
+  function showFinal(verb, hint){
+    finalVerb.textContent = verb;
+    finalHint.textContent = hint || "";
+    finalMsg.classList.add("show");
+  }
+  function awaitUser(){
+    showFinal("Open", " — press any key or click to continue");
+    finalMsg.classList.add("await");
+    const handler = (e) => { if (e) e.preventDefault(); goRedirect(); };
+    document.addEventListener("keydown", handler, { once: true });
+    document.addEventListener("click", handler, { once: true });
+  }
+
+  const screen = document.getElementById("screen");
+  const lines = [
+    {t: "Main Processor : Intel(R) Core(TM) i9 @ 5.20GHz"},
+    {t: "Memory Testing : "},
+    {t: "MEMTEST", mem: true},
+    {t: "Detecting IDE drives ..."},
+    {t: `  Primary Master   : ${BRAND}-SSD 2TB NVMe`, cls:"ok", ok:true},
+    {t: "  Primary Slave    : None", cls:"dim"},
+    {t: `  Secondary Master : ${BRAND}-OPTICAL DVD-RW`, cls:"ok", ok:true},
+    {t: "Initializing USB Controllers ..", cls:"ok", ok:true},
+    {t: "USB Device(s): 1 Keyboard, 1 Mouse, 2 Storage", cls:"dim"},
+    {t: "PNP Init Completed", cls:"ok", ok:true},
+    {t: "Verifying DMI Pool Data ...", cls:"ok", ok:true},
+    {t: "Loading Operating System ......", cls:"warn"},
+    {t: `Starting ${BRAND}-OS ...`, cls:"ok", ok:true}
+  ];
+
+  const totalMs = Math.max(1, CONFIG.duration) * 1000;
+  // reserve ~18% of time for the memory count animation
+  const memMs = totalMs * 0.30;
+  const perLine = (totalMs - memMs) / (lines.length);
+
+  let i = 0;
+  function writeLine(html){ screen.innerHTML += html + "\n"; }
+
+  function step(){
+    if (i >= lines.length){ finish(); return; }
+    const ln = lines[i];
+    if (ln.mem){ return runMemTest(); }
+    let html;
+    if (ln.cls) html = `<span class="${ln.cls}">${ln.t}</span>` + (ln.ok ? `   <span class="ok">[ OK ]</span>` : "");
+    else html = ln.t;
+    writeLine(html);
+    i++;
+    setTimeout(step, perLine);
+  }
+
+  function runMemTest(){
+    const totalK = 33554432; // 32GB in KB-ish for flavor
+    const start = performance.now();
+    const node = document.createElement("span");
+    screen.appendChild(node);
+    function tick(now){
+      const p = Math.min(1, (now - start) / memMs);
+      const val = Math.floor(totalK * p);
+      node.textContent = val.toLocaleString() + " KB OK";
+      if (p < 1){ requestAnimationFrame(tick); }
+      else {
+        node.innerHTML = totalK.toLocaleString() + ' KB OK   <span class="ok">[ OK ]</span>';
+        writeLine("");
+        i++;
+        setTimeout(step, perLine);
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function finish(){
+    document.getElementById("cursor").style.display = "none";
+    if (CONFIG.autoRedirect){
+      document.getElementById("footer").textContent = "Boot complete";
+      showFinal("Loading", " …");
+      setTimeout(goRedirect, 700);
+    } else {
+      document.getElementById("footer").textContent = "Boot complete — awaiting operator…";
+      awaitUser();
+    }
+  }
+
+  step();
+</script>
+</body>
+</html>

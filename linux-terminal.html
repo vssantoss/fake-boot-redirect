@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Victor Santos' Projects & Knowledge Base</title>
+<meta name="description" content="A public workspace and personal knowledge base by Victor Santos, featuring software projects, technical posts, practical guides, and useful resources.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#000000">
+<meta property="og:title" content="Victor Santos' Projects & Knowledge Base">
+<meta property="og:description" content="A public workspace and personal knowledge base by Victor Santos, featuring software projects, technical posts, practical guides, and useful resources.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="">
+<noscript><meta http-equiv="refresh" content="3"></noscript>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #000; }
+  body {
+    font-family: "DejaVu Sans Mono", "Consolas", "Courier New", monospace;
+    font-size: 15px; line-height: 1.4;
+    color: #d8d8d8; padding: 18px 22px;
+    overflow: hidden;
+  }
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+  #log { white-space: pre-wrap; word-break: break-word; }
+  .ok    { color: #2ecc71; }
+  .fail  { color: #e74c3c; }
+  .info  { color: #3498db; }
+  .kern  { color: #888; }
+  .white { color: #fff; }
+  .ts    { color: #5a5a5a; }
+  .cursor{ display:inline-block; width:8px; height:1em; background:#d8d8d8;
+           vertical-align:text-bottom; animation:blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0; } }
+  /* faint scanline */
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 3px);}
+
+  .skip-btn {
+    position: fixed; right: 22px; bottom: 22px; z-index: 5;
+    font-family: inherit; font-size: 14px; color: #2ecc71;
+    background: rgba(0,0,0,.6); border: 1px solid #2ecc71; padding: 8px 16px;
+    cursor: pointer; letter-spacing: 1px;
+    opacity: 0; transform: translateY(6px); pointer-events: none;
+    transition: opacity .4s ease, transform .4s ease, background .15s, color .15s;
+  }
+  .skip-btn.show { opacity: 1; transform: none; pointer-events: auto; }
+  .skip-btn:hover { background: #2ecc71; color: #000; }
+  .skip-count { opacity: .65; font-size: .85em; }
+  .final-msg { display: none; margin-top: 14px; color: #fff; }
+  .final-msg.show { display: block; }
+  .final-msg.await { animation: blink 1.2s steps(1) infinite; }
+  .final-msg a { color: #2ecc71; text-decoration: underline; }
+</style>
+</head>
+<body>
+  <h1 class="sr-only">Booting the system and redirecting</h1>
+  <p class="sr-only">If you are not redirected automatically, continue to
+    <a href="https://vss.dev" id="seoLink" rel="noopener">https://vss.dev</a>.</p>
+  <main id="log" aria-live="polite"></main>
+  <span class="cursor" id="cursor"></span>
+  <div class="final-msg" id="finalMsg"><span id="finalVerb">Launching</span>
+    <a href="https://vss.dev" id="finalLink" rel="noopener">https://vss.dev</a><span id="finalHint"></span></div>
+  <button id="skipBtn" class="skip-btn">Skip&nbsp;&rarr;<span class="skip-count" id="skipCount"></span></button>
+
+<script>
+  /* ============================================================
+     CONFIG — edit these two values
+     ============================================================ */
+  const CONFIG = {
+    duration: 5,                       // boot length in SECONDS
+    redirect: "https://vss.dev",   // where to send the user
+    brand: "VSS",                      // brand name shown throughout the boot
+    autoRedirect: true,                // false => wait for keypress/click after boot
+    skipAfter: 3                       // seconds until Skip button shows (false to hide)
+  };
+  (function(){
+    const q = new URLSearchParams(location.search);
+    if (q.get("duration")) CONFIG.duration = parseFloat(q.get("duration"));
+    if (q.get("redirect")) CONFIG.redirect = q.get("redirect");
+    if (q.get("brand")) CONFIG.brand = q.get("brand");
+    if (q.has("autoRedirect")) CONFIG.autoRedirect = !/^(0|false|no|off)$/i.test(q.get("autoRedirect"));
+    if (q.has("skipAfter")) CONFIG.skipAfter = /^(false|no|off)$/i.test(q.get("skipAfter")) ? false : parseFloat(q.get("skipAfter"));
+  })();
+
+  /* ---- Apply brand + destination link everywhere (one place to edit) ---- */
+  const BRAND = CONFIG.brand;
+  document.title = "Booting " + BRAND + "-Linux — Starting System Services";
+  document.querySelectorAll(".brand-name").forEach(el => el.textContent = BRAND);
+  ["seoLink", "finalLink"].forEach(id => {
+    const a = document.getElementById(id);
+    if (a){ a.href = CONFIG.redirect; a.textContent = CONFIG.redirect; }
+  });
+
+  /* ---- Skip button + redirect control ---- */
+  let redirected = false;
+  function goRedirect(){ if (redirected) return; redirected = true; location.replace(CONFIG.redirect); }
+
+  const skipBtn = document.getElementById("skipBtn");
+  skipBtn.addEventListener("click", goRedirect);
+  if (CONFIG.skipAfter !== false && !isNaN(CONFIG.skipAfter)){
+    setTimeout(() => skipBtn.classList.add("show"), Math.max(0, CONFIG.skipAfter) * 1000);
+  }
+
+  // live countdown to auto-redirect (only when autoRedirect is on)
+  const skipCount = document.getElementById("skipCount");
+  if (CONFIG.autoRedirect){
+    const bootStart = performance.now();
+    const tick = setInterval(() => {
+      if (redirected){ clearInterval(tick); return; }
+      const remain = Math.max(0, CONFIG.duration - (performance.now() - bootStart) / 1000);
+      skipCount.textContent = " (auto in " + Math.ceil(remain) + "s)";
+      if (remain <= 0) clearInterval(tick);
+    }, 250);
+  }
+
+  const finalMsg  = document.getElementById("finalMsg");
+  const finalVerb = document.getElementById("finalVerb");
+  const finalHint = document.getElementById("finalHint");
+  function showFinal(verb, hint){
+    finalVerb.textContent = verb;
+    finalHint.textContent = hint || "";
+    finalMsg.classList.add("show");
+  }
+  function awaitUser(){
+    showFinal("Open", " — press any key or click to continue");
+    finalMsg.classList.add("await");
+    const handler = (e) => { if (e) e.preventDefault(); goRedirect(); };
+    document.addEventListener("keydown", handler, { once: true });
+    document.addEventListener("click", handler, { once: true });
+  }
+
+  const log = document.getElementById("log");
+
+  // entries: [type, text]  type: kern|ok|fail|info|white|plain
+  const seq = [
+    ["white",`${BRAND}-Linux 6.9.0-27-generic (tty1)\n`],
+    ["kern",`[    0.000000] Linux version 6.9.0 (build@${BRAND.toLowerCase()}) #27-Ubuntu SMP`],
+    ["kern","[    0.000000] Command line: BOOT_IMAGE=/vmlinuz root=/dev/nvme0n1p2 ro quiet splash"],
+    ["kern","[    0.184221] CPU0: Intel(R) Core(TM) i9 @ 5.20GHz"],
+    ["kern","[    0.512440] Memory: 32G available"],
+    ["kern","[    0.998120] systemd[1]: System time set."],
+    ["plain",""],
+    ["ok","Started Network Time Synchronization."],
+    ["ok","Mounted /boot/efi filesystem."],
+    ["ok","Reached target Local File Systems."],
+    ["ok","Started Journal Service."],
+    ["ok","Started udev Kernel Device Manager."],
+    ["ok","Started D-Bus System Message Bus."],
+    ["info","Starting Network Manager..."],
+    ["ok","Started Network Manager."],
+    ["ok","Reached target Network."],
+    ["ok","Started OpenSSH server daemon."],
+    ["ok","Started Permit User Sessions."],
+    ["info","Starting GNOME Display Manager..."],
+    ["ok","Started GNOME Display Manager."],
+    ["ok","Reached target Graphical Interface."],
+    ["plain",""],
+    ["white",`${BRAND.toLowerCase()}-host login: launching session...`]
+  ];
+
+  const totalMs = Math.max(1, CONFIG.duration) * 1000;
+  const per = totalMs / seq.length;
+  let i = 0;
+
+  function fmt(type, text){
+    if (type === "ok")   return `<span class="white">[</span>  <span class="ok">OK</span>  <span class="white">]</span> ${text}`;
+    if (type === "fail") return `<span class="white">[</span><span class="fail">FAILED</span><span class="white">]</span> ${text}`;
+    if (type === "info") return `<span class="white">[</span> <span class="info">INFO</span> <span class="white">]</span> ${text}`;
+    if (type === "kern") return `<span class="kern">${text}</span>`;
+    if (type === "white")return `<span class="white">${text}</span>`;
+    return text;
+  }
+
+  function step(){
+    if (i >= seq.length){ return finish(); }
+    const [type, text] = seq[i];
+    log.innerHTML += fmt(type, text) + "\n";
+    window.scrollTo(0, document.body.scrollHeight);
+    i++;
+    // small natural jitter around the average pace
+    setTimeout(step, per * (0.6 + Math.random()*0.8));
+  }
+
+  function finish(){
+    document.getElementById("cursor").style.display = "none";
+    if (CONFIG.autoRedirect){
+      showFinal("Launching", " …");
+      setTimeout(goRedirect, 700);
+    } else {
+      awaitUser();
+    }
+  }
+
+  step();
+</script>
+</body>
+</html>

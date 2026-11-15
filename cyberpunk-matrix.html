@@ -99,28 +99,45 @@
     <div class="progress"><i id="bar"></i></div>
     <div class="meta"><span id="pct">0%</span><span id="rate">0.00 MB/s</span></div>
     <div class="final-msg" id="finalMsg">&gt; <span id="finalVerb">Opening</span>
-      <a href="https://vss.dev" id="finalLink" rel="noopener">https://vss.dev</a><span id="finalHint"></span></div>
+      <a id="finalLink" rel="noopener"></a><span id="finalHint"></span></div>
   </main>
 
   <button id="skipBtn" class="skip-btn">Skip&nbsp;&rarr;<span class="skip-count" id="skipCount"></span></button>
 
 <script>
   /* ============================================================
-     CONFIG — edit these values
+     CONFIG: edit these values
      ============================================================ */
   const CONFIG = {
     duration: 5,                      // boot length in SECONDS
-    redirect: "https://vss.dev",   // where to send the user
+    // destination: edit the seoLink href in <body> (and the <noscript> refresh in <head>)
+    redirect: document.getElementById("seoLink").getAttribute("href"),
     brand: "VSS",                      // brand name shown throughout the boot
     autoRedirect: true,                // false => wait for keypress/click after boot
     skipAfter: 3                       // seconds until Skip button shows (false to hide)
   };
-  (function(){
+  /**
+   * Applies the ?duration, ?brand, ?autoRedirect and ?skipAfter overrides to CONFIG.
+   * Invalid values are ignored so a crafted link cannot stall or break the boot.
+   * @returns {void}
+   */
+  (function applyUrlOverrides(){
     const q = new URLSearchParams(location.search);
-    if (q.get("duration")) CONFIG.duration = parseFloat(q.get("duration"));
-    if (q.get("brand")) CONFIG.brand = q.get("brand");
+    const duration = parseFloat(q.get("duration"));
+    // capped so a shared link cannot keep visitors on this page indefinitely
+    if (Number.isFinite(duration) && duration > 0) CONFIG.duration = Math.min(duration, 60);
+    // short, plain-character brands only: limits what a crafted link can display on this domain
+    const brand = q.get("brand");
+    if (brand && /^[A-Za-z0-9 ._-]{1,24}$/.test(brand)) CONFIG.brand = brand;
     if (q.has("autoRedirect")) CONFIG.autoRedirect = !/^(0|false|no|off)$/i.test(q.get("autoRedirect"));
-    if (q.has("skipAfter")) CONFIG.skipAfter = /^(false|no|off)$/i.test(q.get("skipAfter")) ? false : parseFloat(q.get("skipAfter"));
+    if (q.has("skipAfter")){
+      const raw = q.get("skipAfter");
+      const secs = parseFloat(raw);
+      if (/^(false|no|off)$/i.test(raw)) CONFIG.skipAfter = false;
+      else if (Number.isFinite(secs)) CONFIG.skipAfter = secs;
+    }
+    // query-string variants are for testing; keep them out of search indexes
+    if (q.toString()) document.querySelector('meta[name="robots"]').setAttribute("content", "noindex, follow");
   })();
 
   /* ---- Apply brand + destination link everywhere (one place to edit) ---- */
@@ -133,6 +150,13 @@
 
   /* ---- Skip button + redirect control ---- */
   let redirected = false;
+  // pause between the final message appearing and the redirect
+  const FINAL_DELAY_MS = 700;
+
+  /**
+   * Sends the visitor to CONFIG.redirect. Only the first call has an effect.
+   * @returns {void}
+   */
   function goRedirect(){ if (redirected) return; redirected = true; location.replace(CONFIG.redirect); }
 
   const skipBtn = document.getElementById("skipBtn");
@@ -147,7 +171,8 @@
     const bootStart = performance.now();
     const tick = setInterval(() => {
       if (redirected){ clearInterval(tick); return; }
-      const remain = Math.max(0, CONFIG.duration - (performance.now() - bootStart) / 1000);
+      // counts to the real redirect moment: the boot itself plus the final-message pause
+      const remain = Math.max(0, Math.max(1, CONFIG.duration) + FINAL_DELAY_MS / 1000 - (performance.now() - bootStart) / 1000);
       skipCount.textContent = " (auto in " + Math.ceil(remain) + "s)";
       if (remain <= 0) clearInterval(tick);
     }, 250);
@@ -156,13 +181,23 @@
   const finalMsg  = document.getElementById("finalMsg");
   const finalVerb = document.getElementById("finalVerb");
   const finalHint = document.getElementById("finalHint");
+  /**
+   * Shows the closing message with the destination link.
+   * @param {string} verb - word shown before the link, e.g. "Opening".
+   * @param {string} [hint] - text shown after the link.
+   * @returns {void}
+   */
   function showFinal(verb, hint){
     finalVerb.textContent = verb;
     finalHint.textContent = hint || "";
     finalMsg.classList.add("show");
   }
+  /**
+   * Shows the final message and waits for any key or click before redirecting.
+   * @returns {void}
+   */
   function awaitUser(){
-    showFinal("Open", " — press any key or click to proceed_");
+    showFinal("Open", ", press any key or click to proceed_");
     finalMsg.classList.add("await");
     const handler = (e) => { e.preventDefault(); goRedirect(); };
     document.addEventListener("keydown", handler, { once: true });
@@ -175,6 +210,10 @@
   const fontSize = 16;
   let drops;
   const glyphs = "アイウエオカキクケコ0123456789ABCDEF<>/\\=+*#".split("");
+  /**
+   * Sizes the canvas to the window and resets the rain columns.
+   * @returns {void}
+   */
   function resize(){
     cv.width = innerWidth; cv.height = innerHeight;
     drops = Array.from({ length: Math.floor(cv.width / fontSize) }, () => Math.random() * -50);
@@ -182,6 +221,10 @@
     ctx.font = fontSize + "px monospace";
   }
   resize(); addEventListener("resize", resize);
+  /**
+   * Draws one frame of the falling-glyph background and schedules the next.
+   * @returns {void}
+   */
   function rain(){
     ctx.fillStyle = "rgba(2,16,10,0.10)";
     ctx.fillRect(0,0,cv.width,cv.height);
@@ -221,6 +264,11 @@
   let ei = 0;
   const eventGap = totalMs / events.length;
 
+  /**
+   * Advances the progress bar and event feed for one frame, then finishes the boot at 100%.
+   * @param {number} now - frame timestamp from requestAnimationFrame.
+   * @returns {void}
+   */
   function frame(now){
     const p = Math.min(1, (now - start) / totalMs);
     bar.style.width = (p*100) + "%";
@@ -237,7 +285,7 @@
       document.getElementById("cursor").style.display = "none";
       if (CONFIG.autoRedirect){
         showFinal("Opening", " …");
-        setTimeout(goRedirect, 700);
+        setTimeout(goRedirect, FINAL_DELAY_MS);
       } else {
         awaitUser();
       }

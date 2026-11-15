@@ -7,8 +7,9 @@ $templates = ['retro-bios', 'linux-terminal', 'modern-glass', 'cyberpunk-matrix'
 $cookieName = 'boot_template';
 $cookieLifetime = 5; // minutes
 
-$requestedTemplate = isset($_GET['template']) ? (string) $_GET['template'] : '';
-$selectedTemplate = isset($_COOKIE[$cookieName]) ? (string) $_COOKIE[$cookieName] : '';
+// is_string guards against array input (?template[]=x), which would emit a warning before headers.
+$requestedTemplate = isset($_GET['template']) && is_string($_GET['template']) ? $_GET['template'] : '';
+$selectedTemplate = isset($_COOKIE[$cookieName]) && is_string($_COOKIE[$cookieName]) ? $_COOKIE[$cookieName] : '';
 
 if (in_array($requestedTemplate, $templates, true)) {
     $selectedTemplate = $requestedTemplate;
@@ -34,4 +35,6 @@ if (!is_file($templatePath) || !is_readable($templatePath)) {
 }
 
 header('Content-Type: text/html; charset=UTF-8');
+// The body varies per visitor (random pick + Set-Cookie), so no cache may store it.
+header('Cache-Control: private, no-store');
 readfile($templatePath);

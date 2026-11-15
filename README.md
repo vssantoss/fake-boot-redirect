@@ -5,16 +5,16 @@ then redirect the visitor to another page. There are also two optional entry poi
 that randomly choose one template and keep that choice stable for a short time, so
 refreshing the page replays the same animation:
 
-- `index.php` — for any PHP-enabled web host.
-- `functions/index.js` — a Cloudflare Pages Function (same behavior, no PHP needed).
+- `index.php`: for any PHP-enabled web host.
+- `functions/index.js`: a Cloudflare Pages Function (same behavior, no PHP needed).
 
 No build step, no external CSS/JS. The HTML files work on their own.
 
 > **Using this project? Replace my site's info first.** These files ship pre-filled
-> with my details — site URL `https://vss.dev`, brand `VSS`, and the page
+> with my details: site URL `https://vss.dev`, brand `VSS`, and the page
 > title/description "Victor Santos' Projects & Knowledge Base". Before you publish,
 > swap all of that for **your own** URL, brand, title, and description. See
-> [Make it yours](#make-it-yours--replace-my-site-info) below for the exact list of
+> [Make it yours](#make-it-yours-replace-my-site-info) below for the exact list of
 > things to change.
 
 ## The four styles
@@ -105,7 +105,7 @@ The project layout Pages expects:
 1. Push this folder to a Git repo (GitHub/GitLab) and create a project in the
    Cloudflare Pages dashboard, **or** deploy with Wrangler.
 2. Build settings: **Build command** = *(none)*, **Build output directory** = `/`
-   (the repo root). Pages auto-detects the `functions/` directory — no extra config.
+   (the repo root). Pages auto-detects the `functions/` directory, no extra config.
 3. Visit your `*.pages.dev` URL. The root `/` runs the picker; the same query
    params work:
 
@@ -136,44 +136,59 @@ const COOKIE_LIFETIME = 5; // minutes
 
 ---
 
-## Make it yours — replace my site info
+## Make it yours: replace my site info
 
 These files come pre-filled with **my** website information. If you're reusing this
 project, replace it with **your own** in every file you publish.
 
-### 1. The `CONFIG` block (URL + brand)
+### 1. The destination URL (two lines per file)
 
-Open each of the four files in a text editor and find the **`CONFIG`** block near the
-top of the `<script>` tag (it looks the same in every file):
+The destination lives in two places in each file, so visitors with and without
+JavaScript end up in the same spot:
+
+1. The hidden link near the top of `<body>`. The script reads its `href`, so this is the
+   destination for everyone with JavaScript (the Skip button, the auto-redirect and the
+   final on-screen link all use it):
+   ```html
+   <a href="https://vss.dev" id="seoLink" rel="noopener">https://vss.dev</a>
+   ```
+2. The `<noscript>` refresh line in the `<head>`, which is what visitors without
+   JavaScript follow:
+   ```html
+   <meta http-equiv="refresh" content="3;url=https://vss.dev">
+   ```
+
+Change every `https://vss.dev` on both lines to **your** destination URL (include `https://`).
+
+### 2. The `CONFIG` block (brand + timing)
+
+Find the **`CONFIG`** block near the top of the `<script>` tag (it looks the same in
+every file):
 
 ```js
 const CONFIG = {
   duration: 5,                    // how long the boot lasts, in SECONDS
-  redirect: "https://vss.dev",    // where the visitor goes at the end  ← CHANGE THIS
+  redirect: ...,                  // read from the seoLink above, don't edit here
   brand: "VSS",                   // brand name shown during the boot    ← CHANGE THIS
   autoRedirect: true,             // true = auto-jump; false = wait for a key/click
   skipAfter: 3                    // seconds until the "Skip →" button appears
 };
 ```
 
-- `redirect` → change `https://vss.dev` to **your** destination URL (keep the quotes,
-  include `https://`). Also change it in the `<noscript>` refresh line in the
-  `<head>` (`content="3;url=https://vss.dev"`), which is what visitors without
-  JavaScript follow.
 - `brand` → change `VSS` to **your** name/company (e.g. `"ACME"`). It updates the logo
   text, drive names, hostname, etc., automatically.
 
-### 2. The page title & description (in the `<head>`)
+### 3. The page title & description (in the `<head>`)
 
 Each file's `<head>` is pre-set to my title/description. Change these to describe
 **your** page (see [Make it SEO-friendly](#make-it-seo-friendly-recommended-one-time-edits)
 for the full list):
 
-- `<title>` — currently `Victor Santos' Projects & Knowledge Base`
+- `<title>`: currently `Victor Santos' Projects & Knowledge Base`
 - `<meta name="description">`
 - `<meta property="og:title">`
 - `<meta property="og:description">`
-- `<link rel="canonical">` — set to this page's own address on your domain
+- `<link rel="canonical">`: set to this page's own address on your domain
 
 > Quick way to find them all: search each file for `vss.dev`, `VSS`, and
 > `Victor Santos` and replace with your own values.
@@ -187,9 +202,9 @@ Everything else is optional.
 | Setting | Default | What it controls |
 |---------|---------|------------------|
 | `duration` | `5` | Length of the boot animation in **seconds**. Higher = longer show. |
-| `redirect` | `https://vss.dev` | Destination URL. **This is the main one to change.** |
+| `redirect` | `seoLink` href | Destination URL, read from the `seoLink` anchor. **This is the main one to change** (see [step 1](#1-the-destination-url-two-lines-per-file)). |
 | `brand` | `"VSS"` | Brand text shown throughout (logo, OS name, hostname, panel title). |
-| `autoRedirect` | `true` | `true`: jumps automatically when the boot ends. `false`: the boot finishes and then waits — the visitor must **press any key or click** the link to continue. |
+| `autoRedirect` | `true` | `true`: jumps automatically when the boot ends. `false`: the boot finishes and then waits; the visitor must **press any key or click** the link to continue. |
 | `skipAfter` | `3` | Seconds before the **Skip →** button fades in (so people can bypass the wait). Set to `false` to hide the button entirely. |
 
 When `autoRedirect` is on, the Skip button also shows a live countdown:
@@ -208,17 +223,19 @@ retro-bios.html?duration=12&brand=ACME&autoRedirect=0&skipAfter=5
 
 | Param | Example | Notes |
 |-------|---------|-------|
-| `duration` | `?duration=12` | Seconds. |
-| `brand` | `?brand=ACME` | Brand text. |
+| `duration` | `?duration=12` | Seconds, greater than 0, capped at 60. |
+| `brand` | `?brand=ACME` | Brand text: up to 24 letters, digits, spaces, `.`, `-` or `_`. |
 | `autoRedirect` | `?autoRedirect=0` | Use `0`/`false`/`no`/`off` to turn it **off**. |
 | `skipAfter` | `?skipAfter=5` or `?skipAfter=off` | Seconds, or `off` to hide the Skip button. |
 
 > URL values win over the values written in `CONFIG`, so you don't have to touch the
-> file to try different settings.
+> file to try different settings. Invalid values are ignored and the `CONFIG` value is
+> kept. Any page opened with a query string is marked `noindex`, so test variants stay
+> out of search results.
 >
 > The destination is deliberately **not** overridable from the URL. Allowing it would
 > let anyone craft a link on your domain that sends visitors to any site (an open
-> redirect). Set it in `CONFIG` instead.
+> redirect). Set it in the file instead (see [step 1](#1-the-destination-url-two-lines-per-file)).
 
 ---
 
@@ -228,15 +245,15 @@ Each file already includes a title, meta description, Open Graph tags, a heading
 a `<noscript>` fallback, and a **real followable link** to your destination. To get
 the most out of it, edit these in the `<head>` of each file you use:
 
-1. **Canonical URL** — fill in the empty tag with this page's own address:
+1. **Canonical URL**: fill in the empty tag with this page's own address:
    ```html
    <link rel="canonical" href="https://yourdomain.com/boot.html">
    ```
-2. **Title & description** — change `<title>`, `<meta name="description">`, and the
+2. **Title & description**: change `<title>`, `<meta name="description">`, and the
    `og:title` / `og:description` to describe your actual page.
-3. The destination link is generated automatically from `redirect`, so once you set
-   `redirect` the on-page link and the hidden "If you are not redirected
-   automatically, continue to …" link both point to the right place.
+3. The final on-screen link is filled in from the hidden "If you are not redirected
+   automatically, continue to …" link, so once you set that link's `href` both point
+   to the right place.
 
 **Important reality check:** these pages redirect using JavaScript (client-side).
 That's perfect as a branded splash/interstitial, but search engines do **not** pass
@@ -251,14 +268,14 @@ screen for visitors, these are exactly right.
 
 - **Test locally:** double-click any file to open it in your browser.
 - **Use as a landing/splash page:** rename the file (e.g. `index.html`) and upload it
-  to your web host. Visitors who land there see the boot, then go to `redirect`.
+  to your web host. Visitors who land there see the boot, then go to your destination.
 - **Use random templates (PHP host):** upload all four `.html` files plus
   `index.php` to a PHP-enabled web host, then point visitors to `index.php`.
 - **Use random templates (Cloudflare Pages):** deploy the whole folder (the four
-  `.html` files plus `functions/index.js`) to Cloudflare Pages — see the
+  `.html` files plus `functions/index.js`) to Cloudflare Pages; see the
   [Cloudflare Pages](#cloudflare-pages-no-php) section above. Point visitors to `/`.
 - **Multiple destinations:** make one copy of the file per destination, each with its
-  own `redirect` in `CONFIG`.
+  own destination URL (see [step 1](#1-the-destination-url-two-lines-per-file)).
 
 ---
 
@@ -288,5 +305,5 @@ link they can click. You can adjust the delay and destination in the
 `<meta http-equiv="refresh" content="3;url=https://vss.dev">` line inside `<noscript>`.
 
 **Can I change the colors/text of the boot lines?**
-Yes — everything is inline. The CSS is in the `<style>` block and the boot text is
+Yes, everything is inline. The CSS is in the `<style>` block and the boot text is
 in the `<script>` (look for the `lines` / `seq` / `events` arrays).

@@ -13,7 +13,7 @@
 <link rel="canonical" href="">
 <noscript>
   <!-- SEO + no-JS fallback: redirect after a short delay -->
-  <meta http-equiv="refresh" content="3">
+  <meta http-equiv="refresh" content="3;url=https://vss.dev">
 </noscript>
 <style>
   :root {
@@ -123,11 +123,10 @@
     autoRedirect: true,                // false => wait for keypress/click after boot
     skipAfter: 3                       // seconds until Skip button shows (false to hide)
   };
-  // Optional URL overrides: ?duration=12&redirect=https://site.com&autoRedirect=0&skipAfter=5
+  // Optional URL overrides: ?duration=12&brand=ACME&autoRedirect=0&skipAfter=5
   (function(){
     const q = new URLSearchParams(location.search);
     if (q.get("duration")) CONFIG.duration = parseFloat(q.get("duration"));
-    if (q.get("redirect")) CONFIG.redirect = q.get("redirect");
     if (q.get("brand")) CONFIG.brand = q.get("brand");
     if (q.has("autoRedirect")) CONFIG.autoRedirect = !/^(0|false|no|off)$/i.test(q.get("autoRedirect"));
     if (q.has("skipAfter")) CONFIG.skipAfter = /^(false|no|off)$/i.test(q.get("skipAfter")) ? false : parseFloat(q.get("skipAfter"));
@@ -202,6 +201,16 @@
   const perLine = (totalMs - memMs) / (lines.length);
 
   let i = 0;
+  /**
+   * Escapes text so it can be inserted into HTML without being parsed as markup.
+   * Needed because ?brand= is user-controlled and ends up in innerHTML-style inserts.
+   * @param {string} s - raw text.
+   * @returns {string} the HTML-safe text.
+   */
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
+  }
+
   function writeLine(html){ screen.insertAdjacentHTML("beforeend", html + "\n"); }
 
   function step(){
@@ -209,8 +218,8 @@
     const ln = lines[i];
     if (ln.mem){ return runMemTest(); }
     let html;
-    if (ln.cls) html = `<span class="${ln.cls}">${ln.t}</span>` + (ln.cls === "ok" ? `   <span class="ok">[ OK ]</span>` : "");
-    else html = ln.t;
+    if (ln.cls) html = `<span class="${ln.cls}">${escapeHtml(ln.t)}</span>` + (ln.cls === "ok" ? `   <span class="ok">[ OK ]</span>` : "");
+    else html = escapeHtml(ln.t);
     writeLine(html);
     i++;
     setTimeout(step, perLine);

@@ -24,7 +24,6 @@
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
   #log { white-space: pre-wrap; word-break: break-word; }
   .ok    { color: #2ecc71; }
-  .fail  { color: #e74c3c; }
   .info  { color: #3498db; }
   .kern  { color: #888; }
   .white { color: #fff; }
@@ -65,7 +64,7 @@
 
 <script>
   /* ============================================================
-     CONFIG — edit these two values
+     CONFIG — edit these values
      ============================================================ */
   const CONFIG = {
     duration: 5,                       // boot length in SECONDS
@@ -86,7 +85,6 @@
   /* ---- Apply brand + destination link everywhere (one place to edit) ---- */
   const BRAND = CONFIG.brand;
   document.title = "Booting " + BRAND + "-Linux — Starting System Services";
-  document.querySelectorAll(".brand-name").forEach(el => el.textContent = BRAND);
   ["seoLink", "finalLink"].forEach(id => {
     const a = document.getElementById(id);
     if (a){ a.href = CONFIG.redirect; a.textContent = CONFIG.redirect; }
@@ -125,14 +123,14 @@
   function awaitUser(){
     showFinal("Open", " — press any key or click to continue");
     finalMsg.classList.add("await");
-    const handler = (e) => { if (e) e.preventDefault(); goRedirect(); };
+    const handler = (e) => { e.preventDefault(); goRedirect(); };
     document.addEventListener("keydown", handler, { once: true });
     document.addEventListener("click", handler, { once: true });
   }
 
   const log = document.getElementById("log");
 
-  // entries: [type, text]  type: kern|ok|fail|info|white|plain
+  // entries: [type, text]  type: kern|ok|info|white|plain
   const seq = [
     ["white",`${BRAND}-Linux 6.9.0-27-generic (tty1)\n`],
     ["kern",`[    0.000000] Linux version 6.9.0 (build@${BRAND.toLowerCase()}) #27-Ubuntu SMP`],
@@ -165,7 +163,6 @@
 
   function fmt(type, text){
     if (type === "ok")   return `<span class="white">[</span>  <span class="ok">OK</span>  <span class="white">]</span> ${text}`;
-    if (type === "fail") return `<span class="white">[</span><span class="fail">FAILED</span><span class="white">]</span> ${text}`;
     if (type === "info") return `<span class="white">[</span> <span class="info">INFO</span> <span class="white">]</span> ${text}`;
     if (type === "kern") return `<span class="kern">${text}</span>`;
     if (type === "white")return `<span class="white">${text}</span>`;
@@ -175,7 +172,7 @@
   function step(){
     if (i >= seq.length){ return finish(); }
     const [type, text] = seq[i];
-    log.innerHTML += fmt(type, text) + "\n";
+    log.insertAdjacentHTML("beforeend", fmt(type, text) + "\n");
     window.scrollTo(0, document.body.scrollHeight);
     i++;
     // small natural jitter around the average pace

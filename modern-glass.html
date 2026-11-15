@@ -48,11 +48,11 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* progress ring */
-  .ring { --p: 0; width: 64px; height: 64px; margin: 0 auto 22px; position: relative; }
+  .ring { width: 64px; height: 64px; margin: 0 auto 22px; position: relative; }
   .ring svg { transform: rotate(-90deg); }
   .ring .track { fill: none; stroke: #ffffff1f; stroke-width: 5; }
   .ring .bar   { fill: none; stroke: url(#g1); stroke-width: 5; stroke-linecap: round;
-                 stroke-dasharray: 175.9; stroke-dashoffset: 175.9; transition: stroke-dashoffset .25s linear; }
+                 stroke-dasharray: 100; stroke-dashoffset: 100; }
   .pct { position:absolute; inset:0; display:grid; place-items:center;
          font-size:14px; font-variant-numeric: tabular-nums; color:#cdd6ff; }
 
@@ -99,7 +99,7 @@
       </svg>
     </div>
 
-    <div class="ring" id="ring">
+    <div class="ring">
       <svg width="64" height="64" viewBox="0 0 64 64">
         <defs>
           <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
@@ -108,7 +108,7 @@
           </linearGradient>
         </defs>
         <circle class="track" cx="32" cy="32" r="28"/>
-        <circle class="bar" id="bar" cx="32" cy="32" r="28"/>
+        <circle class="bar" id="bar" cx="32" cy="32" r="28" pathLength="100"/>
       </svg>
       <div class="pct" id="pct">0%</div>
     </div>
@@ -124,7 +124,7 @@
 
 <script>
   /* ============================================================
-     CONFIG — edit these two values
+     CONFIG — edit these values
      ============================================================ */
   const CONFIG = {
     duration: 5,                       // boot length in SECONDS
@@ -183,7 +183,7 @@
   function awaitUser(){
     showFinal("Open", " — press any key or click to continue");
     finalMsg.classList.add("await");
-    const handler = (e) => { if (e) e.preventDefault(); goRedirect(); };
+    const handler = (e) => { e.preventDefault(); goRedirect(); };
     document.addEventListener("keydown", handler, { once: true });
     document.addEventListener("click", handler, { once: true });
   }
@@ -191,7 +191,6 @@
   const bar = document.getElementById("bar");
   const pct = document.getElementById("pct");
   const status = document.getElementById("status");
-  const CIRC = 175.9; // 2πr, r=28
 
   const messages = [
     "Preparing your experience…",
@@ -208,15 +207,14 @@
 
   function frame(now){
     const p = Math.min(1, (now - start) / totalMs);
-    const pctVal = Math.round(p * 100);
-    bar.style.strokeDashoffset = CIRC * (1 - p);
-    pct.textContent = pctVal + "%";
+    // pathLength="100" on the circle makes the dash offset a plain percentage
+    bar.style.strokeDashoffset = 100 * (1 - p);
+    pct.textContent = Math.round(p * 100) + "%";
 
     const mi = Math.min(messages.length - 1, Math.floor(p * messages.length));
     if (mi !== lastMsg){
       lastMsg = mi;
-      status.style.opacity = 0;
-      setTimeout(() => { status.textContent = messages[mi]; status.style.opacity = 1; }, 120);
+      setStatus(messages[mi]);
     }
 
     if (p < 1) requestAnimationFrame(frame);
@@ -224,9 +222,18 @@
   }
   requestAnimationFrame(frame);
 
-  function finish(){
+  /**
+   * Fades the status line out, swaps its text, and fades it back in.
+   * @param {string} text - the new status message.
+   * @returns {void}
+   */
+  function setStatus(text){
     status.style.opacity = 0;
-    setTimeout(() => { status.textContent = "Ready"; status.style.opacity = 1; }, 120);
+    setTimeout(() => { status.textContent = text; status.style.opacity = 1; }, 120);
+  }
+
+  function finish(){
+    setStatus("Ready");
     if (CONFIG.autoRedirect){
       showFinal("Opening", " …");
       setTimeout(goRedirect, 700);

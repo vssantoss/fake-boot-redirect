@@ -1,24 +1,19 @@
 <?php
 declare(strict_types=1);
 
-$templates = [
-    'retro-bios' => __DIR__ . '/retro-bios.html',
-    'linux-terminal' => __DIR__ . '/linux-terminal.html',
-    'modern-glass' => __DIR__ . '/modern-glass.html',
-    'cyberpunk-matrix' => __DIR__ . '/cyberpunk-matrix.html',
-];
+// Template keys; each is served from <key>.html next to this file.
+$templates = ['retro-bios', 'linux-terminal', 'modern-glass', 'cyberpunk-matrix'];
 
 $cookieName = 'boot_template';
 $cookieLifetime = 5; // minutes
-$templateKeys = array_keys($templates);
 
 $requestedTemplate = isset($_GET['template']) ? (string) $_GET['template'] : '';
 $selectedTemplate = isset($_COOKIE[$cookieName]) ? (string) $_COOKIE[$cookieName] : '';
 
-if (array_key_exists($requestedTemplate, $templates)) {
+if (in_array($requestedTemplate, $templates, true)) {
     $selectedTemplate = $requestedTemplate;
-} elseif (!array_key_exists($selectedTemplate, $templates) || isset($_GET['shuffle'])) {
-    $selectedTemplate = $templateKeys[random_int(0, count($templateKeys) - 1)];
+} elseif (!in_array($selectedTemplate, $templates, true) || isset($_GET['shuffle'])) {
+    $selectedTemplate = $templates[random_int(0, count($templates) - 1)];
 }
 
 setcookie($cookieName, $selectedTemplate, [
@@ -29,7 +24,7 @@ setcookie($cookieName, $selectedTemplate, [
     'samesite' => 'Lax',
 ]);
 
-$templatePath = $templates[$selectedTemplate];
+$templatePath = __DIR__ . "/{$selectedTemplate}.html";
 
 if (!is_file($templatePath) || !is_readable($templatePath)) {
     http_response_code(500);

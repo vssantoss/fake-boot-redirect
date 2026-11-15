@@ -2,12 +2,8 @@
 // Handles requests to "/" and serves one of the boot templates,
 // remembering the choice in a short-lived cookie.
 
-const templates = {
-  'retro-bios': '/retro-bios.html',
-  'linux-terminal': '/linux-terminal.html',
-  'modern-glass': '/modern-glass.html',
-  'cyberpunk-matrix': '/cyberpunk-matrix.html',
-};
+// Template keys; each is served from /<key>.html in the static asset bundle.
+const TEMPLATES = ['retro-bios', 'linux-terminal', 'modern-glass', 'cyberpunk-matrix'];
 
 const COOKIE_NAME = 'boot_template';
 const COOKIE_LIFETIME = 5; // minutes
@@ -15,23 +11,19 @@ const COOKIE_LIFETIME = 5; // minutes
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const keys = Object.keys(templates);
 
   const requested = url.searchParams.get('template') ?? '';
   const cookies = parseCookies(request.headers.get('Cookie') ?? '');
   let selected = cookies[COOKIE_NAME] ?? '';
 
-  if (Object.prototype.hasOwnProperty.call(templates, requested)) {
+  if (TEMPLATES.includes(requested)) {
     selected = requested;
-  } else if (
-    !Object.prototype.hasOwnProperty.call(templates, selected) ||
-    url.searchParams.has('shuffle')
-  ) {
-    selected = keys[randomInt(keys.length)];
+  } else if (!TEMPLATES.includes(selected) || url.searchParams.has('shuffle')) {
+    selected = TEMPLATES[randomInt(TEMPLATES.length)];
   }
 
   // Fetch the chosen template from the static asset bundle.
-  const assetUrl = new URL(templates[selected], url.origin);
+  const assetUrl = new URL(`/${selected}.html`, url.origin);
   const asset = await env.ASSETS.fetch(assetUrl);
 
   if (!asset.ok) {

@@ -11,7 +11,7 @@
 <meta property="og:description" content="A public workspace and personal knowledge base by Victor Santos, featuring software projects, technical posts, practical guides, and useful resources.">
 <meta property="og:type" content="website">
 <link rel="canonical" href="">
-<noscript><meta http-equiv="refresh" content="3"></noscript>
+<noscript><meta http-equiv="refresh" content="3;url=https://vss.dev"></noscript>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
@@ -136,7 +136,6 @@
   (function(){
     const q = new URLSearchParams(location.search);
     if (q.get("duration")) CONFIG.duration = parseFloat(q.get("duration"));
-    if (q.get("redirect")) CONFIG.redirect = q.get("redirect");
     if (q.get("brand")) CONFIG.brand = q.get("brand");
     if (q.has("autoRedirect")) CONFIG.autoRedirect = !/^(0|false|no|off)$/i.test(q.get("autoRedirect"));
     if (q.has("skipAfter")) CONFIG.skipAfter = /^(false|no|off)$/i.test(q.get("skipAfter")) ? false : parseFloat(q.get("skipAfter"));

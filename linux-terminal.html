@@ -11,7 +11,7 @@
 <meta property="og:description" content="A public workspace and personal knowledge base by Victor Santos, featuring software projects, technical posts, practical guides, and useful resources.">
 <meta property="og:type" content="website">
 <link rel="canonical" href="">
-<noscript><meta http-equiv="refresh" content="3"></noscript>
+<noscript><meta http-equiv="refresh" content="3;url=https://vss.dev"></noscript>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: #000; }
@@ -76,7 +76,6 @@
   (function(){
     const q = new URLSearchParams(location.search);
     if (q.get("duration")) CONFIG.duration = parseFloat(q.get("duration"));
-    if (q.get("redirect")) CONFIG.redirect = q.get("redirect");
     if (q.get("brand")) CONFIG.brand = q.get("brand");
     if (q.has("autoRedirect")) CONFIG.autoRedirect = !/^(0|false|no|off)$/i.test(q.get("autoRedirect"));
     if (q.has("skipAfter")) CONFIG.skipAfter = /^(false|no|off)$/i.test(q.get("skipAfter")) ? false : parseFloat(q.get("skipAfter"));
@@ -161,7 +160,18 @@
   const per = totalMs / seq.length;
   let i = 0;
 
+  /**
+   * Escapes text so it can be inserted into HTML without being parsed as markup.
+   * Needed because ?brand= is user-controlled and ends up in innerHTML-style inserts.
+   * @param {string} s - raw text.
+   * @returns {string} the HTML-safe text.
+   */
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
+  }
+
   function fmt(type, text){
+    text = escapeHtml(text);
     if (type === "ok")   return `<span class="white">[</span>  <span class="ok">OK</span>  <span class="white">]</span> ${text}`;
     if (type === "info") return `<span class="white">[</span> <span class="info">INFO</span> <span class="white">]</span> ${text}`;
     if (type === "kern") return `<span class="kern">${text}</span>`;

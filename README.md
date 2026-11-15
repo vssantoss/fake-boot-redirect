@@ -68,7 +68,7 @@ The chosen template still accepts the normal animation query params, so this als
 works:
 
 ```
-index.php?template=cyberpunk-matrix&duration=8&redirect=https://mysite.com&brand=ACME
+index.php?template=cyberpunk-matrix&duration=8&brand=ACME
 ```
 
 To change how long the random choice is remembered, edit this line in
@@ -112,7 +112,7 @@ The project layout Pages expects:
 ```
 /?template=cyberpunk-matrix
 /?shuffle=1
-/?template=cyberpunk-matrix&duration=8&redirect=https://mysite.com&brand=ACME
+/?template=cyberpunk-matrix&duration=8&brand=ACME
 ```
 
 ### Test locally
@@ -148,7 +148,7 @@ top of the `<script>` tag (it looks the same in every file):
 
 ```js
 const CONFIG = {
-  duration: 8,                    // how long the boot lasts, in SECONDS
+  duration: 5,                    // how long the boot lasts, in SECONDS
   redirect: "https://vss.dev",    // where the visitor goes at the end  ← CHANGE THIS
   brand: "VSS",                   // brand name shown during the boot    ← CHANGE THIS
   autoRedirect: true,             // true = auto-jump; false = wait for a key/click
@@ -157,7 +157,9 @@ const CONFIG = {
 ```
 
 - `redirect` → change `https://vss.dev` to **your** destination URL (keep the quotes,
-  include `https://`).
+  include `https://`). Also change it in the `<noscript>` refresh line in the
+  `<head>` (`content="3;url=https://vss.dev"`), which is what visitors without
+  JavaScript follow.
 - `brand` → change `VSS` to **your** name/company (e.g. `"ACME"`). It updates the logo
   text, drive names, hostname, etc., automatically.
 
@@ -184,7 +186,7 @@ Everything else is optional.
 
 | Setting | Default | What it controls |
 |---------|---------|------------------|
-| `duration` | `7`–`10` | Length of the boot animation in **seconds**. Higher = longer show. |
+| `duration` | `5` | Length of the boot animation in **seconds**. Higher = longer show. |
 | `redirect` | `https://vss.dev` | Destination URL. **This is the main one to change.** |
 | `brand` | `"VSS"` | Brand text shown throughout (logo, OS name, hostname, panel title). |
 | `autoRedirect` | `true` | `true`: jumps automatically when the boot ends. `false`: the boot finishes and then waits — the visitor must **press any key or click** the link to continue. |
@@ -197,23 +199,26 @@ When `autoRedirect` is on, the Skip button also shows a live countdown:
 
 ## Overriding settings from the URL (no editing needed)
 
-Every setting can be set with a query string, which is handy for testing or for
-reusing one file for several destinations:
+Every setting except `redirect` can be set with a query string, which is handy for
+testing:
 
 ```
-retro-bios.html?duration=12&redirect=https://mysite.com&brand=ACME&autoRedirect=0&skipAfter=5
+retro-bios.html?duration=12&brand=ACME&autoRedirect=0&skipAfter=5
 ```
 
 | Param | Example | Notes |
 |-------|---------|-------|
 | `duration` | `?duration=12` | Seconds. |
-| `redirect` | `?redirect=https://mysite.com` | The destination. |
 | `brand` | `?brand=ACME` | Brand text. |
 | `autoRedirect` | `?autoRedirect=0` | Use `0`/`false`/`no`/`off` to turn it **off**. |
 | `skipAfter` | `?skipAfter=5` or `?skipAfter=off` | Seconds, or `off` to hide the Skip button. |
 
 > URL values win over the values written in `CONFIG`, so you don't have to touch the
 > file to try different settings.
+>
+> The destination is deliberately **not** overridable from the URL. Allowing it would
+> let anyone craft a link on your domain that sends visitors to any site (an open
+> redirect). Set it in `CONFIG` instead.
 
 ---
 
@@ -252,9 +257,8 @@ screen for visitors, these are exactly right.
 - **Use random templates (Cloudflare Pages):** deploy the whole folder (the four
   `.html` files plus `functions/index.js`) to Cloudflare Pages — see the
   [Cloudflare Pages](#cloudflare-pages-no-php) section above. Point visitors to `/`.
-- **Multiple destinations from one file:** use the URL params above instead of
-  editing the file (e.g. share `boot.html?redirect=https://a.com` and
-  `boot.html?redirect=https://b.com`).
+- **Multiple destinations:** make one copy of the file per destination, each with its
+  own `redirect` in `CONFIG`.
 
 ---
 
@@ -280,8 +284,8 @@ Open `index.php?shuffle=1` (or `/?shuffle=1` on Cloudflare Pages), or clear the
 
 **Nothing happens for visitors with JavaScript disabled.**
 There's a `<noscript>` fallback that redirects after ~3 seconds, plus a visible
-link they can click. You can adjust the delay in the `<meta http-equiv="refresh"
-content="3">` line inside `<noscript>`.
+link they can click. You can adjust the delay and destination in the
+`<meta http-equiv="refresh" content="3;url=https://vss.dev">` line inside `<noscript>`.
 
 **Can I change the colors/text of the boot lines?**
 Yes — everything is inline. The CSS is in the `<style>` block and the boot text is

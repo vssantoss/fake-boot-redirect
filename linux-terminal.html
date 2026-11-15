@@ -59,31 +59,48 @@
   <main id="log" aria-live="polite"></main>
   <span class="cursor" id="cursor"></span>
   <div class="final-msg" id="finalMsg"><span id="finalVerb">Launching</span>
-    <a href="https://vss.dev" id="finalLink" rel="noopener">https://vss.dev</a><span id="finalHint"></span></div>
+    <a id="finalLink" rel="noopener"></a><span id="finalHint"></span></div>
   <button id="skipBtn" class="skip-btn">Skip&nbsp;&rarr;<span class="skip-count" id="skipCount"></span></button>
 
 <script>
   /* ============================================================
-     CONFIG — edit these values
+     CONFIG: edit these values
      ============================================================ */
   const CONFIG = {
     duration: 5,                       // boot length in SECONDS
-    redirect: "https://vss.dev",   // where to send the user
+    // destination: edit the seoLink href in <body> (and the <noscript> refresh in <head>)
+    redirect: document.getElementById("seoLink").getAttribute("href"),
     brand: "VSS",                      // brand name shown throughout the boot
     autoRedirect: true,                // false => wait for keypress/click after boot
     skipAfter: 3                       // seconds until Skip button shows (false to hide)
   };
-  (function(){
+  /**
+   * Applies the ?duration, ?brand, ?autoRedirect and ?skipAfter overrides to CONFIG.
+   * Invalid values are ignored so a crafted link cannot stall or break the boot.
+   * @returns {void}
+   */
+  (function applyUrlOverrides(){
     const q = new URLSearchParams(location.search);
-    if (q.get("duration")) CONFIG.duration = parseFloat(q.get("duration"));
-    if (q.get("brand")) CONFIG.brand = q.get("brand");
+    const duration = parseFloat(q.get("duration"));
+    // capped so a shared link cannot keep visitors on this page indefinitely
+    if (Number.isFinite(duration) && duration > 0) CONFIG.duration = Math.min(duration, 60);
+    // short, plain-character brands only: limits what a crafted link can display on this domain
+    const brand = q.get("brand");
+    if (brand && /^[A-Za-z0-9 ._-]{1,24}$/.test(brand)) CONFIG.brand = brand;
     if (q.has("autoRedirect")) CONFIG.autoRedirect = !/^(0|false|no|off)$/i.test(q.get("autoRedirect"));
-    if (q.has("skipAfter")) CONFIG.skipAfter = /^(false|no|off)$/i.test(q.get("skipAfter")) ? false : parseFloat(q.get("skipAfter"));
+    if (q.has("skipAfter")){
+      const raw = q.get("skipAfter");
+      const secs = parseFloat(raw);
+      if (/^(false|no|off)$/i.test(raw)) CONFIG.skipAfter = false;
+      else if (Number.isFinite(secs)) CONFIG.skipAfter = secs;
+    }
+    // query-string variants are for testing; keep them out of search indexes
+    if (q.toString()) document.querySelector('meta[name="robots"]').setAttribute("content", "noindex, follow");
   })();
 
   /* ---- Apply brand + destination link everywhere (one place to edit) ---- */
   const BRAND = CONFIG.brand;
-  document.title = "Booting " + BRAND + "-Linux — Starting System Services";
+  document.title = "Booting " + BRAND + "-Linux: Starting System Services";
   ["seoLink", "finalLink"].forEach(id => {
     const a = document.getElementById(id);
     if (a){ a.href = CONFIG.redirect; a.textContent = CONFIG.redirect; }
@@ -91,6 +108,13 @@
 
   /* ---- Skip button + redirect control ---- */
   let redirected = false;
+  // pause between the final message appearing and the redirect
+  const FINAL_DELAY_MS = 700;
+
+  /**
+   * Sends the visitor to CONFIG.redirect. Only the first call has an effect.
+   * @returns {void}
+   */
   function goRedirect(){ if (redirected) return; redirected = true; location.replace(CONFIG.redirect); }
 
   const skipBtn = document.getElementById("skipBtn");
@@ -105,7 +129,8 @@
     const bootStart = performance.now();
     const tick = setInterval(() => {
       if (redirected){ clearInterval(tick); return; }
-      const remain = Math.max(0, CONFIG.duration - (performance.now() - bootStart) / 1000);
+      // counts to the real redirect moment: the boot itself plus the final-message pause
+      const remain = Math.max(0, Math.max(1, CONFIG.duration) + FINAL_DELAY_MS / 1000 - (performance.now() - bootStart) / 1000);
       skipCount.textContent = " (auto in " + Math.ceil(remain) + "s)";
       if (remain <= 0) clearInterval(tick);
     }, 250);
@@ -114,13 +139,23 @@
   const finalMsg  = document.getElementById("finalMsg");
   const finalVerb = document.getElementById("finalVerb");
   const finalHint = document.getElementById("finalHint");
+  /**
+   * Shows the closing message with the destination link.
+   * @param {string} verb - word shown before the link, e.g. "Opening".
+   * @param {string} [hint] - text shown after the link.
+   * @returns {void}
+   */
   function showFinal(verb, hint){
     finalVerb.textContent = verb;
     finalHint.textContent = hint || "";
     finalMsg.classList.add("show");
   }
+  /**
+   * Shows the final message and waits for any key or click before redirecting.
+   * @returns {void}
+   */
   function awaitUser(){
-    showFinal("Open", " — press any key or click to continue");
+    showFinal("Open", ", press any key or click to continue");
     finalMsg.classList.add("await");
     const handler = (e) => { e.preventDefault(); goRedirect(); };
     document.addEventListener("keydown", handler, { once: true });
@@ -170,6 +205,12 @@
     return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
   }
 
+  /**
+   * Builds the escaped, styled markup for one log entry.
+   * @param {string} type - kern|ok|info|white|plain.
+   * @param {string} text - raw entry text.
+   * @returns {string} the line's HTML.
+   */
   function fmt(type, text){
     text = escapeHtml(text);
     if (type === "ok")   return `<span class="white">[</span>  <span class="ok">OK</span>  <span class="white">]</span> ${text}`;
@@ -179,21 +220,34 @@
     return text;
   }
 
+  const bootT0 = performance.now();
+
+  /**
+   * Prints the next log entry and schedules the one after it, or calls finish().
+   * @returns {void}
+   */
   function step(){
     if (i >= seq.length){ return finish(); }
     const [type, text] = seq[i];
     log.insertAdjacentHTML("beforeend", fmt(type, text) + "\n");
     window.scrollTo(0, document.body.scrollHeight);
     i++;
-    // small natural jitter around the average pace
-    setTimeout(step, per * (0.6 + Math.random()*0.8));
+    // jitter each line around its fixed slot instead of chaining random gaps, so the
+    // total stays at totalMs and the Skip countdown matches; the last slot has none
+    const jitter = i < seq.length ? (Math.random() - 0.5) * 0.8 * per : 0;
+    const due = bootT0 + i * per + jitter;
+    setTimeout(step, Math.max(0, due - performance.now()));
   }
 
+  /**
+   * Ends the boot: redirects after a short pause, or waits for the visitor.
+   * @returns {void}
+   */
   function finish(){
     document.getElementById("cursor").style.display = "none";
     if (CONFIG.autoRedirect){
       showFinal("Launching", " …");
-      setTimeout(goRedirect, 700);
+      setTimeout(goRedirect, FINAL_DELAY_MS);
     } else {
       awaitUser();
     }

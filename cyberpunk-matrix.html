@@ -59,8 +59,7 @@
   .progress { height: 14px; border:1px solid #0fff8066; border-radius:3px; overflow:hidden;
     background:#031c12; margin-top:10px; }
   .progress > i { display:block; height:100%; width:0%;
-    background: linear-gradient(90deg,#0fff80,#39ff14); box-shadow:0 0 14px #39ff14;
-    transition: width .2s linear; }
+    background: linear-gradient(90deg,#0fff80,#39ff14); box-shadow:0 0 14px #39ff14; }
   .meta { display:flex; justify-content:space-between; font-size:12px; color:#5fbf90; margin-top:8px; }
   .cursor{ display:inline-block; width:8px;height:1em;background:#39ff14;
     vertical-align:text-bottom; animation:blink 1s steps(1) infinite; box-shadow:0 0 8px #39ff14;}
@@ -107,7 +106,7 @@
 
 <script>
   /* ============================================================
-     CONFIG — edit these two values
+     CONFIG — edit these values
      ============================================================ */
   const CONFIG = {
     duration: 5,                      // boot length in SECONDS
@@ -166,7 +165,7 @@
   function awaitUser(){
     showFinal("Open", " — press any key or click to proceed_");
     finalMsg.classList.add("await");
-    const handler = (e) => { if (e) e.preventDefault(); goRedirect(); };
+    const handler = (e) => { e.preventDefault(); goRedirect(); };
     document.addEventListener("keydown", handler, { once: true });
     document.addEventListener("click", handler, { once: true });
   }
@@ -174,18 +173,20 @@
   /* ---------- Matrix rain ---------- */
   const cv = document.getElementById("matrix");
   const ctx = cv.getContext("2d");
-  let cols, drops, fontSize = 16;
+  const fontSize = 16;
+  let drops;
   const glyphs = "アイウエオカキクケコ0123456789ABCDEF<>/\\=+*#".split("");
   function resize(){
     cv.width = innerWidth; cv.height = innerHeight;
-    cols = Math.floor(cv.width / fontSize);
-    drops = Array(cols).fill(0).map(() => Math.random() * -50);
+    drops = Array.from({ length: Math.floor(cv.width / fontSize) }, () => Math.random() * -50);
+    // resizing the canvas resets context state, so the font is set here rather than per frame
+    ctx.font = fontSize + "px monospace";
   }
   resize(); addEventListener("resize", resize);
   function rain(){
     ctx.fillStyle = "rgba(2,16,10,0.10)";
     ctx.fillRect(0,0,cv.width,cv.height);
-    ctx.fillStyle = "#39ff14"; ctx.font = fontSize + "px monospace";
+    ctx.fillStyle = "#39ff14";
     for (let i=0;i<drops.length;i++){
       const ch = glyphs[Math.floor(Math.random()*glyphs.length)];
       ctx.fillText(ch, i*fontSize, drops[i]*fontSize);
@@ -218,7 +219,7 @@
 
   const totalMs = Math.max(1, CONFIG.duration) * 1000;
   const start = performance.now();
-  let ei = 0, lastEvent = 0;
+  let ei = 0;
   const eventGap = totalMs / events.length;
 
   function frame(now){
@@ -227,9 +228,9 @@
     pctEl.textContent = Math.round(p*100) + "%";
     rate.textContent = (Math.random()*40 + 80).toFixed(2) + " MB/s";
 
-    if (ei < events.length && (now - start) >= lastEvent){
-      feed.innerHTML += events[ei]() + "\n";
-      ei++; lastEvent += eventGap;
+    if (ei < events.length && (now - start) >= ei * eventGap){
+      feed.insertAdjacentHTML("beforeend", events[ei]() + "\n");
+      ei++;
     }
 
     if (p < 1) requestAnimationFrame(frame);

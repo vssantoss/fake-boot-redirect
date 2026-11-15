@@ -114,7 +114,7 @@
 
 <script>
   /* ============================================================
-     CONFIG — edit these two values
+     CONFIG — edit these values
      ============================================================ */
   const CONFIG = {
     duration: 5,                       // boot length in SECONDS
@@ -174,7 +174,7 @@
   function awaitUser(){
     showFinal("Open", " — press any key or click to continue");
     finalMsg.classList.add("await");
-    const handler = (e) => { if (e) e.preventDefault(); goRedirect(); };
+    const handler = (e) => { e.preventDefault(); goRedirect(); };
     document.addEventListener("keydown", handler, { once: true });
     document.addEventListener("click", handler, { once: true });
   }
@@ -185,31 +185,31 @@
     {t: "Memory Testing : "},
     {t: "MEMTEST", mem: true},
     {t: "Detecting IDE drives ..."},
-    {t: `  Primary Master   : ${BRAND}-SSD 2TB NVMe`, cls:"ok", ok:true},
+    {t: `  Primary Master   : ${BRAND}-SSD 2TB NVMe`, cls:"ok"},
     {t: "  Primary Slave    : None", cls:"dim"},
-    {t: `  Secondary Master : ${BRAND}-OPTICAL DVD-RW`, cls:"ok", ok:true},
-    {t: "Initializing USB Controllers ..", cls:"ok", ok:true},
+    {t: `  Secondary Master : ${BRAND}-OPTICAL DVD-RW`, cls:"ok"},
+    {t: "Initializing USB Controllers ..", cls:"ok"},
     {t: "USB Device(s): 1 Keyboard, 1 Mouse, 2 Storage", cls:"dim"},
-    {t: "PNP Init Completed", cls:"ok", ok:true},
-    {t: "Verifying DMI Pool Data ...", cls:"ok", ok:true},
+    {t: "PNP Init Completed", cls:"ok"},
+    {t: "Verifying DMI Pool Data ...", cls:"ok"},
     {t: "Loading Operating System ......", cls:"warn"},
-    {t: `Starting ${BRAND}-OS ...`, cls:"ok", ok:true}
+    {t: `Starting ${BRAND}-OS ...`, cls:"ok"}
   ];
 
   const totalMs = Math.max(1, CONFIG.duration) * 1000;
-  // reserve ~18% of time for the memory count animation
+  // reserve ~30% of time for the memory count animation
   const memMs = totalMs * 0.30;
   const perLine = (totalMs - memMs) / (lines.length);
 
   let i = 0;
-  function writeLine(html){ screen.innerHTML += html + "\n"; }
+  function writeLine(html){ screen.insertAdjacentHTML("beforeend", html + "\n"); }
 
   function step(){
     if (i >= lines.length){ finish(); return; }
     const ln = lines[i];
     if (ln.mem){ return runMemTest(); }
     let html;
-    if (ln.cls) html = `<span class="${ln.cls}">${ln.t}</span>` + (ln.ok ? `   <span class="ok">[ OK ]</span>` : "");
+    if (ln.cls) html = `<span class="${ln.cls}">${ln.t}</span>` + (ln.cls === "ok" ? `   <span class="ok">[ OK ]</span>` : "");
     else html = ln.t;
     writeLine(html);
     i++;
@@ -218,16 +218,17 @@
 
   function runMemTest(){
     const totalK = 33554432; // 32GB in KB-ish for flavor
+    const fmtNum = new Intl.NumberFormat();
     const start = performance.now();
     const node = document.createElement("span");
     screen.appendChild(node);
     function tick(now){
       const p = Math.min(1, (now - start) / memMs);
       const val = Math.floor(totalK * p);
-      node.textContent = val.toLocaleString() + " KB OK";
+      node.textContent = fmtNum.format(val) + " KB OK";
       if (p < 1){ requestAnimationFrame(tick); }
       else {
-        node.innerHTML = totalK.toLocaleString() + ' KB OK   <span class="ok">[ OK ]</span>';
+        node.innerHTML = fmtNum.format(totalK) + ' KB OK   <span class="ok">[ OK ]</span>';
         writeLine("");
         i++;
         setTimeout(step, perLine);
